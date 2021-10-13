@@ -36,6 +36,17 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
 
   // Verifies that a url opened by `Window.open` has a secure url.
   private class FlutterWebChromeClient extends WebChromeClient {
+    private boolean appInstalledOrNot(String uri) {
+      PackageManager pm = getPackageManager();
+      try {
+          pm.getPackageInfo(uri, PackageManager.GET_ACTIVITIES);
+          return true;
+      } catch (PackageManager.NameNotFoundException e) {
+      }
+
+      return false;
+    }
+
     @Override
     public boolean onCreateWindow(
         final WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
@@ -55,10 +66,18 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-              if (!flutterWebViewClient.shouldOverrideUrlLoading(
-                  FlutterWebView.this.webView, url)) {
-                webView.loadUrl(url);
+              if (URLUtil.isNetworkUrl(url) ) {                
+                return false;
               }
+              if (appInstalledOrNot(url)) {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity( intent );
+              } else {
+                if (!flutterWebViewClient.shouldOverrideUrlLoading(
+                  FlutterWebView.this.webView, url)) {
+                  webView.loadUrl(url);
+                }
+              }              
               return true;
             }
           };
